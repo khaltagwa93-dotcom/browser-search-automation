@@ -19,15 +19,15 @@ interface SearchResponse {
   error?: string;
   message?: string;
   hint?: string;
+  note?: string;
 }
 
 export default function Home() {
   const [query, setQuery] = useState('');
-  const [engine, setEngine] = useState('duckduckgo');
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [meta, setMeta] = useState<{ query: string; engine: string; timestamp: string; count: number } | null>(null);
+  const [meta, setMeta] = useState<{ query: string; engine: string; timestamp: string; count: number; note?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
 
@@ -57,14 +57,14 @@ export default function Home() {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query.trim(), engine, limit }),
+        body: JSON.stringify({ query: query.trim(), limit }),
       });
 
       const data: SearchResponse = await res.json();
 
       if (!res.ok || data.error) {
         setError(data.message || data.error || 'فشل البحث');
-        if (data.hint) setError(prev => prev + ' — ' + data.hint);
+        if (data.hint) setError(prev => (prev || '') + ' — ' + data.hint);
         return;
       }
 
@@ -74,6 +74,7 @@ export default function Home() {
         engine: data.engine,
         timestamp: data.timestamp,
         count: data.count,
+        note: data.note,
       });
       saveHistory(query.trim());
     } catch (err: any) {
@@ -106,7 +107,7 @@ export default function Home() {
             نظام أتمتة البحث من المتصفح
           </h1>
           <p className="mt-2 text-slate-400 text-sm md:text-base">
-            Playwright · DuckDuckGo / Google / Bing · مفتوح المصدر · يعمل على Vercel
+            DuckDuckGo Instant · مفتوح المصدر · يعمل على Vercel (نسخة خفيفة)
           </p>
         </header>
 
@@ -122,15 +123,6 @@ export default function Home() {
               dir="auto"
             />
             <select
-              value={engine}
-              onChange={(e) => setEngine(e.target.value)}
-              className="bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            >
-              <option value="duckduckgo">DuckDuckGo (موصى به)</option>
-              <option value="google">Google</option>
-              <option value="bing">Bing</option>
-            </select>
-            <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
               className="bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -138,7 +130,6 @@ export default function Home() {
               <option value={5}>5 نتائج</option>
               <option value={10}>10 نتائج</option>
               <option value={15}>15 نتائج</option>
-              <option value={20}>20 نتائج</option>
             </select>
             <button
               onClick={runSearch}
@@ -182,17 +173,16 @@ export default function Home() {
         {meta && (
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4 text-sm text-slate-400">
             <div>
-              نتائج لـ <span className="text-cyan-400 font-medium">"{meta.query}"</span> عبر{' '}
-              <span className="text-blue-400">{meta.engine}</span> — {meta.count} نتيجة
+              نتائج لـ <span className="text-cyan-400 font-medium">"{meta.query}"</span> — {meta.count} نتيجة
+              {meta.note && <span className="block text-amber-400 text-xs mt-1">{meta.note}</span>}
             </div>
             <div className="flex gap-3">
               <span>{new Date(meta.timestamp).toLocaleString('ar')}</span>
-              <button
-                onClick={exportCSV}
-                className="text-cyan-400 hover:text-cyan-300 underline"
-              >
-                تصدير CSV
-              </button>
+              {results.length > 0 && (
+                <button onClick={exportCSV} className="text-cyan-400 hover:text-cyan-300 underline">
+                  تصدير CSV
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -231,13 +221,13 @@ export default function Home() {
         {!loading && !results.length && !error && (
           <div className="text-center py-20 text-slate-500">
             <p className="text-lg">أدخل كلمة بحث واضغط "بحث" لبدء الأتمتة</p>
-            <p className="mt-2 text-sm">النظام يستخدم متصفح حقيقي (Playwright) لاستخراج النتائج</p>
+            <p className="mt-2 text-sm">نسخة خفيفة تعمل على Vercel · للنسخة الكاملة (Playwright) شغّل محلياً</p>
           </div>
         )}
 
         <footer className="mt-16 text-center text-slate-600 text-xs">
           <p>نظام أتمتة بحث مفتوح المصدر · لا يخزن بيانات على الخادم · النتائج محلية</p>
-          <p className="mt-1">ملاحظة: على خطة Vercel المجانية قد يحدث timeout بعد 10 ثوانٍ — استخدم DuckDuckGo وعدد نتائج أقل</p>
+          <p className="mt-1">النسخة على Vercel تستخدم DuckDuckGo Instant Answer (مجاني وموثوق)</p>
         </footer>
       </div>
     </div>
