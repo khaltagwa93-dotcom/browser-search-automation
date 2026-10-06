@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['@sparticuz/chromium', 'playwright-core'],
+  // Lightweight version - no Playwright
 };
 
 export default nextConfig;
