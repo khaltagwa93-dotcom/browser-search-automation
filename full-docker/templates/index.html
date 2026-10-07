@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>نظام أتمتة البحث الكامل | Playwright</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Tahoma, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; padding-top: 1rem; }
+    h1 {
+      font-size: 1.8rem;
+      background: linear-gradient(90deg, #22d3ee, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle { color: #94a3b8; font-size: 0.9rem; }
+    .card {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid #334155;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    .form-row { display: flex; flex-direction: column; gap: 0.75rem; }
+    @media (min-width: 640px) {
+      .form-row { flex-direction: row; align-items: center; }
+    }
+    input, select {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      color: #f1f5f9;
+      font-size: 1rem;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #22d3ee;
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+    }
+    button {
+      background: linear-gradient(90deg, #06b6d4, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1.8rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      transition: border-color 0.2s;
+    }
+    .result:hover { border-color: #64748b; }
+    .result a {
+      color: #67e8f9;
+      text-decoration: none;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+    .result a:hover { text-decoration: underline; }
+    .url { color: #4ade80; font-size: 0.8rem; margin: 0.3rem 0; word-break: break-all; }
+    .snippet { color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; margin-top: 0.4rem; }
+    .pos { color: #64748b; font-family: monospace; margin-left: 0.5rem; }
+    .error {
+      background: rgba(127, 29, 29, 0.4);
+      border: 1px solid #b91c1c;
+      color: #fecaca;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .meta { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+    .history-btn {
+      background: #334155;
+      color: #e2e8f0;
+      border: none;
+      border-radius: 999px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      margin: 0.2rem;
+    }
+    .history-btn:hover { background: #475569; }
+    .loading { display: inline-flex; align-items: center; gap: 0.5rem; }
+    .spinner {
+      width: 1.2rem; height: 1.2rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer { text-align: center; color: #64748b; font-size: 0.75rem; margin-top: 2rem; padding-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>نظام أتمتة البحث الكامل</h1>
+      <p class="subtitle">Playwright · Google / Bing / DuckDuckGo · يعمل محلياً بدون قيود</p>
+    </header>
+
+    <div class="card">
+      <div class="form-row">
+        <input type="text" id="query" placeholder="أدخل كلمة البحث هنا..." dir="auto" />
+        <select id="engine">
+          <option value="duckduckgo">DuckDuckGo</option>
+          <option value="google">Google</option>
+          <option value="bing">Bing</option>
+        </select>
+        <select id="limit">
+          <option value="5">5 نتائج</option>
+          <option value="10" selected>10 نتائج</option>
+          <option value="15">15 نتائج</option>
+          <option value="20">20 نتائج</option>
+        </select>
+        <button id="btn" onclick="doSearch()">بحث</button>
+      </div>
+      {% if history %}
+      <div style="margin-top: 1rem;">
+        <span style="color:#64748b;font-size:0.8rem;">سجل:</span>
+        {% for h in history %}
+        <button class="history-btn" onclick="document.getElementById('query').value='{{ h.query }}'">{{ h.query }}</button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div id="error" class="error" style="display:none;"></div>
+    <div id="meta" class="meta" style="display:none;"></div>
+    <div id="results"></div>
+
+    <footer>
+      <p>نسخة كاملة تعمل محلياً بـ Playwright · لا تحتاج إنترنت قوي بعد التحميل الأول</p>
+      <p>النتائج تُحفظ في مجلد data/</p>
+    </footer>
+  </div>
+
+  <script>
+    async function doSearch() {
+      const query = document.getElementById('query').value.trim();
+      const engine = document.getElementById('engine').value;
+      const limit = document.getElementById('limit').value;
+      const btn = document.getElementById('btn');
+      const errorDiv = document.getElementById('error');
+      const metaDiv = document.getElementById('meta');
+      const resultsDiv = document.getElementById('results');
+
+      if (!query) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"><span class="spinner"></span> جاري البحث...</span>';
+      errorDiv.style.display = 'none';
+      resultsDiv.innerHTML = '';
+      metaDiv.style.display = 'none';
+
+      try {
+        const form = new FormData();
+        form.append('query', query);
+        form.append('engine', engine);
+        form.append('limit', limit);
+
+        const res = await fetch('/api/search', { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          errorDiv.textContent = data.message || data.error || 'فشل البحث';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        metaDiv.innerHTML = `
+          <span>نتائج لـ <strong style="color:#22d3ee">"${data.query}"</strong> عبر ${data.engine} — ${data.count} نتيجة</span>
+          <span>${new Date(data.timestamp).toLocaleString('ar')}</span>
+        `;
+        metaDiv.style.display = 'flex';
+
+        resultsDiv.innerHTML = data.results.map(r => `
+          <div class="result">
+            <span class="pos">${r.position}</span>
+            <a href="${r.url}" target="_blank" rel="noopener">${r.title}</a>
+            <div class="url">${r.url}</div>
+            ${r.snippet ? `<div class="snippet">${r.snippet}</div>` : ''}
+          </div>
+        `).join('');
+
+      } catch (err) {
+        errorDiv.textContent = 'خطأ في الاتصال: ' + err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'بحث';
+      }
+    }
+
+    document.getElementById('query').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+  </script>
+</body>
+</html>
