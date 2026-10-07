@@ -112,13 +112,18 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     footer { text-align: center; color: #64748b; font-size: 0.75rem; margin-top: 2rem; padding-bottom: 2rem; }
+    .notify-box {
+      display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;
+      font-size: 0.85rem; color: #94a3b8;
+    }
+    .notify-box input { width: auto; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>نظام أتمتة البحث الكامل</h1>
-      <p class="subtitle">Playwright · Google / Bing / DuckDuckGo · يعمل محلياً بدون قيود</p>
+      <p class="subtitle">Playwright · Google / Bing / DuckDuckGo / Amazon / YouTube · محلي بدون قيود</p>
     </header>
 
     <div class="card">
@@ -128,6 +133,8 @@
           <option value="duckduckgo">DuckDuckGo</option>
           <option value="google">Google</option>
           <option value="bing">Bing</option>
+          <option value="amazon">Amazon</option>
+          <option value="youtube">YouTube</option>
         </select>
         <select id="limit">
           <option value="5">5 نتائج</option>
@@ -137,6 +144,12 @@
         </select>
         <button id="btn" onclick="doSearch()">بحث</button>
       </div>
+
+      <div class="notify-box">
+        <input type="checkbox" id="enableNotify" checked />
+        <label for="enableNotify">إشعار عند ظهور نتائج جديدة</label>
+      </div>
+
       {% if history %}
       <div style="margin-top: 1rem;">
         <span style="color:#64748b;font-size:0.8rem;">سجل:</span>
@@ -152,12 +165,31 @@
     <div id="results"></div>
 
     <footer>
-      <p>نسخة كاملة تعمل محلياً بـ Playwright · لا تحتاج إنترنت قوي بعد التحميل الأول</p>
-      <p>النتائج تُحفظ في مجلد data/</p>
+      <p>نسخة كاملة بـ Playwright · Google · Bing · Amazon · YouTube</p>
+      <p>النتائج تُحفظ في مجلد data/ · الإشعارات تعمل في المتصفح</p>
     </footer>
   </div>
 
   <script>
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    let lastResultsHash = localStorage.getItem('lastResultsHash') || '';
+
+    function simpleHash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i) | 0;
+      return h.toString();
+    }
+
+    function showNotification(title, body) {
+      if (!document.getElementById('enableNotify').checked) return;
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico' });
+      }
+    }
+
     async function doSearch() {
       const query = document.getElementById('query').value.trim();
       const engine = document.getElementById('engine').value;
@@ -190,8 +222,21 @@
           return;
         }
 
+        const currentHash = simpleHash(JSON.stringify(data.results.map(r => r.url)));
+        const isNew = currentHash !== lastResultsHash && data.results.length > 0;
+
+        if (isNew) {
+          showNotification(
+            `نتائج جديدة: ${query}`,
+            `ظهر ${data.count} نتيجة عبر ${data.engine}`
+          );
+          lastResultsHash = currentHash;
+          localStorage.setItem('lastResultsHash', currentHash);
+        }
+
         metaDiv.innerHTML = `
-          <span>نتائج لـ <strong style="color:#22d3ee">"${data.query}"</strong> عبر ${data.engine} — ${data.count} نتيجة</span>
+          <span>نتائج لـ <strong style="color:#22d3ee">"${data.query}"</strong> عبر ${data.engine} — ${data.count} نتيجة
+          ${isNew ? ' <span style="color:#4ade80">• جديدة</span>' : ''}</span>
           <span>${new Date(data.timestamp).toLocaleString('ar')}</span>
         `;
         metaDiv.style.display = 'flex';
